@@ -56,7 +56,7 @@ nhb-assessment run __maximum-by-income.ini --api-key=<api-key>
 #+end_src
 
 #+begin_quote
-Het is ook mogelijk om de environment variabele ~MORTGATE_CALC_API_KEY~ te binden aan de api-key
+Het is ook mogelijk om de environment variabele ~MORTGAGE_CALC_API_KEY~ te binden aan de api-key
 als alternatief voor het gebruiken van de ~--api-key~ option.
 #+end_quote
 
@@ -70,8 +70,8 @@ Een volledig gebouwde docker image staat klaar op DockerHub onder de naam [[http
 #+begin_quote
 *LET OP!* De docker container is bedoeld als minimale demonstratie voor situaties waarin het niet
 mogelijk is om nix te installeren. Sommige features zoals ANSI-color outputs en STDOUT/STDERR
-interleaving werken misschien niet als verwacht, wat het een stuk lastiger om je favoriete tekst-editor
-te integreren met de docker versie.
+interleaving werken misschien niet als verwacht, wat het een stuk lastiger maakt om deze tool
+te integreren in je eigen workflow.
 #+end_quote
 
 *** Config bestand initialiseren
