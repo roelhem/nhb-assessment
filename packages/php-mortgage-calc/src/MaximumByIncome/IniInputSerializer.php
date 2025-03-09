@@ -81,6 +81,7 @@ readonly class IniInputSerializer implements InputSerializer
         ));
 
         return <<<INI
+            [top]
             ;; -- BEREKENING --
             ;; De datum voor berekening (yyyy-mm-dd).
             calculation.date = $calculationDateStr
@@ -207,6 +208,7 @@ readonly class IniInputSerializer implements InputSerializer
     public function deserialize(string $input): Input
     {
         $reader = IniReader::fromString($input, $this->iniOptions);
+        $r = $reader->section('top');
 
         $mainPerson = $this->readPerson(
             $reader->section('main_person'),
@@ -223,34 +225,34 @@ readonly class IniInputSerializer implements InputSerializer
         }
 
         return new Input(
-            calculationDate: $reader->readDate(
+            calculationDate: $r->readDate(
                 'calculation.date',
                 $this->defaultInput->calculationDate
             ),
             mainPerson: $mainPerson,
             partnerPerson: $partnerPerson,
-            nhg: $reader->readBool('mortgage.nhg', $this->defaultInput->nhg),
-            durationInMonths: $reader->readPositiveInt(
+            nhg: $r->readBool('mortgage.nhg', $this->defaultInput->nhg),
+            durationInMonths: $r->readPositiveInt(
                 'mortgage.duration_in_months',
                 $this->defaultInput->durationInMonths,
             ),
-            interestPercentage: $reader->readPositiveNumber(
+            interestPercentage: $r->readPositiveNumber(
                 'mortgage.interest_percentage',
                 $this->defaultInput->interestPercentage,
             ),
-            rateFixationInYears: $reader->readPositiveInt(
+            rateFixationInYears: $r->readPositiveInt(
                 'mortgage.rate_fixation_in_years',
                 $this->defaultInput->rateFixationInYears,
             ),
-            notDeductibleAmount: $reader->readNonNegativeCurrencyNumber(
+            notDeductibleAmount: $r->readNonNegativeCurrencyNumber(
                 'mortgage.not_deductible_amount',
                 $this->defaultInput->notDeductibleAmount,
             ),
-            groundRentAmount: $reader->readNonNegativeCurrencyNumber(
+            groundRentAmount: $r->readNonNegativeCurrencyNumber(
                 'object.ground_rent.amount_per_year',
                 $this->defaultInput->groundRentAmount,
             ),
-            energyLabel: $reader->readEnumValue(
+            energyLabel: $r->readEnumValue(
                 EnergyLabel::class,
                 'object.energy_label',
                 $this->defaultInput->energyLabel

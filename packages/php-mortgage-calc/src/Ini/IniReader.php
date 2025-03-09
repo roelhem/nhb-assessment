@@ -35,7 +35,7 @@ readonly class IniReader
     public function section(string $section): IniReader
     {
         assert($this->section === null, 'Only the ini root has sections');
-        return new IniReader($this->data[$section], $section, $this->options);
+        return new IniReader($this->data[$section] ?? [], $section, $this->options);
     }
 
     protected function newValueException(

@@ -10,7 +10,7 @@ use Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByIncome;
 
 class InitCommand extends Command
 {
-    protected $signature = 'init {file : Path to the configuration file}';
+    protected $signature = 'init {file? : Path to the configuration file}';
 
     protected $description = 'Initialize a new configuration file.';
 
@@ -49,10 +49,14 @@ class InitCommand extends Command
 
 
         $file = $this->argument('file');
-        $dir = dirname($file);
-        if($dir !== '' && !file_exists($dir)) mkdir($dir, 0755, true);
-        file_put_contents($file, $contents);
-        $this->line("Nieuw configuratiebestand geïnitialiseerd: $file");
+        if($file) {
+            $dir = dirname($file);
+            if($dir !== '' && !file_exists($dir)) mkdir($dir, 0755, true);
+            file_put_contents($file, $contents);
+            $this->line("Nieuw configuratiebestand geïnitialiseerd: $file");
+        } else {
+            $this->output->writeln($contents);
+        }
         return 0;
     }
 }

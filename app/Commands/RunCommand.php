@@ -23,13 +23,17 @@ class RunCommand extends Command
     ): int
     {
         $file = $this->argument('file');
-        if(!file_exists($file)) {
-            $this->stderr->writeln([
-                '<fg=red;options=bold>ERROR: Bestand niet gevonden</>',
-            ]);
-            return 1;
+        if($file === '-') {
+            $inputStr = file_get_contents('php://stdin');
+        } else {
+            if(!file_exists($file)) {
+                $this->stderr->writeln([
+                    '<fg=red;options=bold>ERROR: Bestand niet gevonden</>',
+                ]);
+                return 1;
+            }
+            $inputStr = file_get_contents($file);
         }
-        $inputStr = file_get_contents($file);
 
         try {
             $input = $inputSerializer->deserialize($inputStr);

@@ -1,6 +1,8 @@
 #+title: Nationale Hypotheekbond - Technical Assessment
 
-Dit is de technical assessment die ik (Roel Hemerik) gemaakt heb voor mijn sollicitatie bij de Nationale Hypotheekbond.
+/Dit is de technical assessment die ik (Roel Hemerik) gemaakt heb voor mijn sollicitatie bij de Nationale Hypotheekbond./
+
+
 
 * Quickstart
 
@@ -15,8 +17,35 @@ aanpast.
 Voer het onderstaande commando uit om een tijdelijk shell te krijgen waarin je deze CLI kunt uitproberen.
 
 #+begin_src shell
-nix --extra-experimental-features 'flakes nix-command' shell roelhem/nhb-assessment
+nix shell github:roelhem/nhb-assessment --extra-experimental-features 'flakes nix-command'
 #+end_src
+
+Alle onderstaande commandos gaan ervan uit dat ze in deze shell uitgevoerd worden òf dat je de nix
+package op je systeem hebt geïnstalleerd.
+
+Om een nieuw configuratiebestand te maken kun je het volgende commando gebruiken:
+
+#+begin_src elisp
+nhb-assessment init __maximum-by-income.ini
+#+end_src
+
+Dit commando maakt een nieuw bestand ~__maximum-by-income.ini~ in de huidige werkmap. De syntax van
+dit bestand is dezelfde als de syntax van de [[https://www.php.net/manual/en/configuration.file.php][PHP configuratie bestanden]]. Je kunt dit bestand aanpassen
+naar de situatie die je wilt bereken in je favoriete text-editor.
+
+Nadat je alle velden in het bestand hebt aangepast, kun je het onderstaande commando gebruiken om
+de maximale hypotheek te berekenen. Vervang  ~<api-key>~ met he API-key voor de [[p][Hypotheekbond Calculation API]].
+
+#+begin_src elisp
+nhb-assessment run __maximum-by-income.ini --api-key=<api-key>
+#+end_src
+
+#+begin_quote
+Het is ook mogelijk om de environment variabele ~MORTGATE_CALC_API_KEY~ te binden aan de api-key
+als alternatief voor het gebruiken van de ~--api-key~ option.
+#+end_quote
+
+De /stdout/-output van dit commando is de maximale hypotheek in euros.
 
 ** Docker
 
@@ -24,9 +53,10 @@ Als je liever geen Nix gebruikt, kun je het programma ook uitvoeren in een Docke
 Een volledig gebouwde docker image staat klaar op DockerHub onder de naam [[https://hub.docker.com/r/roelhem/nhb-assessment][roelhem/nhb-assessment]].
 
 #+begin_quote
-LET OP! De docker container is bedoeld als minimale demonstratie voor situaties waarin het niet
-mogelijk is om nix te installeren. Het is een stuk lastiger om je favoriete tekst-editor te
-integreren met de docker versie.
+*LET OP!* De docker container is bedoeld als minimale demonstratie voor situaties waarin het niet
+mogelijk is om nix te installeren. Sommige features zoals ANSI-color outputs en STDOUT/STDERR
+interleaving werken misschien niet als verwacht, wat het een stuk lastiger om je favoriete tekst-editor
+te integreren met de docker versie.
 #+end_quote
 
 *** Config bestand initialiseren
@@ -37,12 +67,23 @@ Voer het onderstaande commando uit om een nieuw configuratiebestand.
 docker run --rm -v .:/data roelhem/nhb-assessment init /data/__maximum-by-income.ini
 #+end_src
 
-Je kunt nu het gegenereerde bestand ~__maximum-by-income.ini~ aanpassen om
+Je kunt nu het gegenereerde bestand ~__maximum-by-income.ini~ aanpassen voor de situatie die je wilt berekenen.
 
 *** Maximum hypotheek berekenen
 
+Gebruik het onderstaande commando om de maximale hypotheek te berekenen met de parameters uit het
+~__maximum-by-income.ini~ bestand. Vervang  ~<api-key>~ met he API-key voor de [[p][Hypotheekbond Calculation API]].
+
 #+begin_src shell
 docker run --rm -v .:/data roelhem/nhb-assessment run /data/__maximum-by-income.ini --api-key=<api-key>
+#+end_src
+
+Een andere mogelijkheid is om de api key via een environment variabele in te stellen. Dit kun je
+doen met de volgende twee commando's.
+
+#+begin_src shell
+export MORTGAGE_CALC_API_KEY='<api-key>'
+docker run --rm -v .:/data -e MORTGAGE_CALC_API_KEY roelhem/nhb-assessment run /data/__maximum-by-income.ini
 #+end_src
 
 *** Docker image bouwen.
@@ -54,4 +95,102 @@ docker image load < "$(nix build roelhem/nhb-assessment#docker-image --print-out
 #+end_src
 
 Om dit project te bouwen is het wel vereist om Nix te installeren. Ook moet je een nix build-machine
-instellen die derivations voor ~x86_64-linux~ kan maken.
+instellen die derivations voor ~x86_64-linux~ kan maken. (Het bovenstaande commando gaat er ook
+vanuit dat je de experimental features ~flakes~ en ~nix-commands~ aan hebt staan in je
+~nix.conf~ configuratie.)
+
+* Voorbeelden
+
+Deze CLI is zo ontworpen dat hij gemakkelijk te gebruiken is in combinatie met andere programmas. Hieronder staan
+enkele voorbeelden (in ~bash~).
+
+** Hypotheek berekenen voor meerdere rente percentages.
+
+Als je voor het ~run~ commando een ~-~ geeft als filename, wordt de configuratie gelezen uit /stdin/. Dit kun
+je gebruiken om een script te maken die de hypotheek berekend voor meerdere rentepercentages.
+
+#+begin_src bash :results output raw :wrap example
+# Eerste argument voor dit script is het originele configuratiebestand.
+configFile="${1:-__maximum-by-income.ini}"
+
+# Latere configuratie-waarden overschrijven eerdere configuratie-waarden. Dit
+# gebruiken we hier om het originele rente percentage te overschrijven.
+withInterestPercentage() {
+   cat "$configFile";
+
+   echo "[top]";
+   echo "mortgage.interest_percentage = $1"
+}
+
+# De verschillende percentages.
+declare -a interestPercentages=("0.001" "1.5" "1.509" "1.82" "2" "4" "8" "16" "32" "64" "128")
+
+echo "    RENTE   | MAXIMALE HYPOTHEEK "
+echo "------------+--------------------"
+
+# Maak de berekening voor elk van de bovenstaande rentepercentages.
+for interest in "${interestPercentages[@]}"
+do
+    maxMortgage="$(withInterestPercentage "$interest" | nhb-assessment run - 2> /dev/null)"
+    printf " %8.4f %% | € %16.2f\n" $interest $maxMortgage
+done
+#+end_src
+
+Voorbeeld output:
+
+#+RESULTS:
+#+begin_example
+    RENTE   | MAXIMALE HYPOTHEEK
+------------+--------------------
+   0,0010 % | €        331880,63
+   1,5000 % | €        270476,90
+   1,5090 % | €        284224,43
+   1,8200 % | €        273014,04
+   2,0000 % | €        266824,50
+   4,0000 % | €        256225,68
+   8,0000 % | €        209077,96
+  16,0000 % | €        121807,04
+  32,0000 % | €         69848,44
+  64,0000 % | €         43426,25
+ 128,0000 % | €         30213,12
+#+end_example
+
+** Integratie met visual editors
+
+Met behulp van je favoriete tekst-editor en een tools als [[https://github.com/watchexec/watchexec][watchexec]] kun je gemakkelijk
+een script maken waarmee je interactief de hypotheekrente kunt berekenen.
+
+Het onderstaande voorbeeld maakt een nieuw tijdelijk configuratiebestand aan en opent dit
+bestand in [[https://www.gnu.org/software/emacs/][emacs]]. Vervolgens wordt elke keer dat je het configuratiebestand aanpast en opslaat
+een nieuwe berekening gemaakt. Het script sluit automatisch af zodra je het bestand in emacs
+sluit.
+
+#+begin_src bash
+# Maak het tijdelijke configuratiebestand
+TMPFILE="$(mktemp -t XXXXX_maximum_by_income.ini)"
+nhb-assessment init "$TMPFILE" || exit 1
+
+#
+watchexec --watch "$TMPFILE" \
+          --quiet \
+          --clear \
+          --postpone \
+          -- \
+          "nhb-assessment run \"$TMPFILE\" > /dev/null" &
+WATCHPID="$!"
+
+# Schoon alle resources op zodra het script sluit.
+cleanup() {
+    rm "$TMPFILE"
+    kill "$WATCHPID" 2> /dev/null
+}
+trap cleanup EXIT
+
+# Open het configuratiebestand in een nieuwe emacs frame.
+emacsclient -c "$TMPFILE"
+#+end_src
+
+#+begin_quote
+Vervang ~emacsclient -c~ met ~code --wait~ in het bovenstande script om [[https://code.visualstudio.com][VSCode]] te
+gebruiken in plaats van emacs.
+#+end_quote
