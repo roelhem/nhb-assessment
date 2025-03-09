@@ -115,7 +115,6 @@
                 ];
                 Cmd = [
                   "init"
-                  "/data/__test.ini"
                 ];
               };
             };

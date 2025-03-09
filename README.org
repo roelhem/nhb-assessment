@@ -2,11 +2,26 @@
 
 /Dit is de technical assessment die ik (Roel Hemerik) gemaakt heb voor mijn sollicitatie bij de Nationale Hypotheekbond./
 
+Dit project is een cli tool om de maximale hypotheek te berekenen. De input voor deze berekening wordt
+gegeven door middel van ~*.ini~-configuratiebestanden in [[https://www.php.net/manual/en/configuration.file.php][de stijl van ~php.ini~]].
 
+Ik heb gekozen om een cli tool te maken in deze stijl in plaats van een interactieve stijl omdat ik dit soort
+CLI-interfaces veel prettiger vind om mee te werken. De standaard Laravel-achtige interactive TUIs zijn naar
+mijn mening vaak erg onoverzichtelijk, onduidelijk en werken niet alijd in alle terminal-emulators die gebruikt
+worden in web-development (vooral de web-terminals van Azure hebben hier vaak moeite mee).
+
+Deze tool is een proof of concept van hoe ik een CLI-interface zou ontwerpen. Het bied slechts een
+simple basis snel een grote lijst van parameters door te geven aan de applicatie. Elke (aanstaande) collega kan
+met behulp van een of twee ~bash~ scripts deze tool gemakkelijk integreren in zijn of haar persoonlijke
+workflow.
 
 * Quickstart
 
-Dit project is zo ontworpen dat het niet nodig is om een lokale clone van deze repository te maken.
+Ik heb twee methoden gemaakt om deze cli te evalueren zonder dat je deze hele repository hoeft te
+kopiëren naar je lokale systeem. De *Nix* methode is het makkelijkst om te gebruiken en komt het
+meest in de buurt van mijn idee hoe deze CLI gebruikt zou kunnen worden. De *Docker* methode is een
+alternatief voor als je liever geen nix gebruikt. Beide methoden laten geen bestanden of verborgen
+dependencies achter op je systeem.
 
 ** Nix (recommended)
 
@@ -64,7 +79,7 @@ te integreren met de docker versie.
 Voer het onderstaande commando uit om een nieuw configuratiebestand.
 
 #+begin_src shell
-docker run --rm -v .:/data roelhem/nhb-assessment init /data/__maximum-by-income.ini
+docker run --rm roelhem/nhb-assessment init > __maximum-by-income.ini
 #+end_src
 
 Je kunt nu het gegenereerde bestand ~__maximum-by-income.ini~ aanpassen voor de situatie die je wilt berekenen.
@@ -86,12 +101,12 @@ export MORTGAGE_CALC_API_KEY='<api-key>'
 docker run --rm -v .:/data -e MORTGAGE_CALC_API_KEY roelhem/nhb-assessment run /data/__maximum-by-income.ini
 #+end_src
 
-*** Docker image bouwen.
+*** Docker image bouwen
 
 Je kunt de docker container op je eigen machine bouwen met behulp van het onderstaande commando.
 
 #+begin_src shell
-docker image load < "$(nix build roelhem/nhb-assessment#docker-image --print-out-paths)"
+docker image load < "$(nix build github:roelhem/nhb-assessment#docker-image --print-out-paths)"
 #+end_src
 
 Om dit project te bouwen is het wel vereist om Nix te installeren. Ook moet je een nix build-machine
@@ -109,7 +124,7 @@ enkele voorbeelden (in ~bash~).
 Als je voor het ~run~ commando een ~-~ geeft als filename, wordt de configuratie gelezen uit /stdin/. Dit kun
 je gebruiken om een script te maken die de hypotheek berekend voor meerdere rentepercentages.
 
-#+begin_src bash :results output raw :wrap example
+#+begin_src bash :results output raw :wrap src text
 # Eerste argument voor dit script is het originele configuratiebestand.
 configFile="${1:-__maximum-by-income.ini}"
 
@@ -138,8 +153,7 @@ done
 
 Voorbeeld output:
 
-#+RESULTS:
-#+begin_example
+#+begin_src text
     RENTE   | MAXIMALE HYPOTHEEK
 ------------+--------------------
    0,0010 % | €        331880,63
@@ -153,7 +167,7 @@ Voorbeeld output:
   32,0000 % | €         69848,44
   64,0000 % | €         43426,25
  128,0000 % | €         30213,12
-#+end_example
+#+end_src
 
 ** Integratie met text-editors
 
