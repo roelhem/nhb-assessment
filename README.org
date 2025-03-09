@@ -155,7 +155,7 @@ Voorbeeld output:
  128,0000 % | €         30213,12
 #+end_example
 
-** Integratie met visual editors
+** Integratie met text-editors
 
 Met behulp van je favoriete tekst-editor en een tools als [[https://github.com/watchexec/watchexec][watchexec]] kun je gemakkelijk
 een script maken waarmee je interactief de hypotheekrente kunt berekenen.
@@ -166,11 +166,11 @@ een nieuwe berekening gemaakt. Het script sluit automatisch af zodra je het best
 sluit.
 
 #+begin_src bash
-# Maak het tijdelijke configuratiebestand
+# Maak het tijdelijke configuratiebestand.
 TMPFILE="$(mktemp -t XXXXX_maximum_by_income.ini)"
 nhb-assessment init "$TMPFILE" || exit 1
 
-#
+# Voer `nhb-assessment run` uit zodra het configuratiebestand wijzigd.
 watchexec --watch "$TMPFILE" \
           --quiet \
           --clear \
