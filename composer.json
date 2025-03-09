@@ -1,5 +1,7 @@
 {
+    "$schema": "https://getcomposer.org/schema.json",
     "name": "roelhem/nhb-assessment",
+    "license": "proprietary",
     "description": "Technical Assessment for Nationale Hypotheekbond",
     "keywords": ["framework", "laravel", "laravel zero", "console", "cli"],
     "homepage": "https://laravel-zero.com",
@@ -13,11 +15,12 @@
     "require": {
         "php": "^8.4",
         "ext-bcmath": "*",
-        "psr/http-client": "^1.0",
+        "illuminate/http": "^11.5",
         "laravel-zero/framework": "^11.36.1",
-        "roelhem/php-mortgage-calc": "*"
+        "psr/http-client": "^1.0"
     },
     "require-dev": {
+        "intonate/tinker-zero": "^1.2",
         "laravel/pint": "^1.18.3",
         "mockery/mockery": "^1.6.12",
         "pestphp/pest": "^3.7.1"

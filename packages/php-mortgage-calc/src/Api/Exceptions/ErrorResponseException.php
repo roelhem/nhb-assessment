@@ -1,6 +1,6 @@
 <?php
 
-namespace Roelhem\NhbTechAssessment\PhpMortgageCalc\Api;
+namespace Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Exceptions;
 
 use Throwable;
 

@@ -9,8 +9,17 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
-use Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByValue;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Auth\AuthProvider;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Exceptions\ErrorResponseException;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Exceptions\ForbiddenResponseException;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Exceptions\InvalidInputErrorResponseException;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Exceptions\UnexpectedErrorResponseException;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Exceptions\UnexpectedResponseException;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Exceptions\CalcErrorException;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\Exceptions\CalcInputException;
 use Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByIncome;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByIncome\Input;
+use Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByValue;
 use stdClass;
 use function Roelhem\NhbTechAssessment\PhpMortgageCalc\toCurrencyNumber;
 
@@ -21,8 +30,8 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
     public function __construct(
         private ClientInterface $httpClient,
         private RequestFactoryInterface $requestFactory,
-        private ?AuthProvider $authProvider = null,
-        string $calculationApiBaseUrl = 'https://api.hypotheekbond.nl/calculation',
+        private AuthProvider $authProvider,
+        string $calculationApiBaseUrl
     )
     {
         $this->calculationApiBaseUrl = rtrim($calculationApiBaseUrl, '/');
@@ -51,7 +60,7 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
             "loans" => strval($person->totalLoansAmount),
             "studentLoans" => strval($person->studentLoanAmount),
             "studentLoanMonthlyAmount" => strval($person->studentLoanMonthlyAmount),
-            "privateLeaseAmounts" => array_map(strval(...), $person->privateLeaseAmounts),
+            "privateLeaseAmounts" => array_map(strval(...), $person->privateLeaseMonthlyAmounts),
         ];
 
         if($person->studentLoanStartDate !== null) {
@@ -61,15 +70,21 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
         return $params;
     }
 
+    public function calcMaximumByIncome(MaximumByIncome\Input $input): Number
+    {
+        return $this->callCalcInputHandler($this->_calcMaximumByIncome(...), $input);
+    }
+
     /**
      * Computes the MaximumByIncome using a request to the hypotheekbond calculations API.
      *
-     * @param MaximumByIncome\Input $input
-     * @return Number The maximum morgage in euros.
+     * @param Input $input
+     * @return Number The maximum mortgage in euros.
      * @throws ClientExceptionInterface
+     * @throws ErrorResponseException
      * @throws UnexpectedResponseException
      */
-    public function calcMaximumByIncome(MaximumByIncome\Input $input): Number
+    private function _calcMaximumByIncome(MaximumByIncome\Input $input): Number
     {
         // Build request uri
         $personParams = [
@@ -81,9 +96,9 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
 
         $params = [
             "calculationDate" => $input->calculationDate->format('Y-m-d'),
-            "nhg" => $input->nhg,
+            "nhg" => $input->nhg ? 'true' : 'false',
             "duration" => $input->durationInMonths,
-            "percentage" => strval($input->percentage),
+            "percentage" => strval($input->interestPercentage),
             "rateFixation" => $input->rateFixationInYears,
             "notDeductible" => strval($input->notDeductibleAmount),
             "groundRent" => strval($input->groundRentAmount),
@@ -99,8 +114,9 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
         // Send request
         $responseData = $this->handleHttpRequest($httpRequest);
 
+
         // Parse response.
-        $result = $responseData['result'] ?? throw new UnexpectedResponseException(
+        $result = $responseData->result ?? throw new UnexpectedResponseException(
             request: $httpRequest,
             responseData: $responseData,
             message: '`result` is missing from response.',
@@ -124,22 +140,27 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
     // ------------------------------------------------------------------------------------------------------------ //
 
 
+    public function calcMaximumByValue(MaximumByValue\Input $input): Number
+    {
+        return $this->callCalcInputHandler($this->_calcMaximumByValue(...), $input);
+    }
+
     /**
-     * Computes MaximumByBalue using a request to the hypotheekbond calculations API.
+     * Computes MaximumByValue using a request to the hypotheekbond calculations API.
      *
      * @param MaximumByValue\Input $input
      * @return Number The maximum morgage in euros.
      * @throws ClientExceptionInterface
-     * @throws UnexpectedResponseException
+     * @throws UnexpectedResponseException|ErrorResponseException
      */
-    public function calcMaximumByValue(MaximumByValue\Input $input): Number
+    private function _calcMaximumByValue(MaximumByValue\Input $input): Number
     {
         // Build request
         $params = [
             "objectvalue" => strval($input->objectValue),
             "duration" => $input->durationInMonths,
             "not_deductible" => $input->notDeducibleInMonths,
-            "onlyUseIncludedLabels" => $input->onlyUseIncludedLabels,
+            "onlyUseIncludedLabels" => $input->onlyUseIncludedLabels ? 'true' : 'false',
         ];
 
         $queryParams = http_build_query($params, '', '&');
@@ -219,6 +240,7 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
 
                 return $contents->data;
             case 400:
+            case 403:
                 if(!isset($contents->error) || !($contents->error instanceof stdClass)) {
                     throw new UnexpectedResponseException(
                         request: $request,
@@ -230,11 +252,18 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
 
                 $errorData = $contents->error;
 
-                throw new InvalidInputErrorResponseException(
-                    request: $request,
-                    errorMessage: $errorData->message ?? null,
-                    errorCode: $errorData->code ?? null,
-                );
+                throw match ($statusCode) {
+                    400 => new InvalidInputErrorResponseException(
+                        request: $request,
+                        errorMessage: $errorData->message ?? null,
+                        errorCode: $errorData->code ?? null,
+                    ),
+                    403 => new ForbiddenResponseException(
+                        request: $request,
+                        errorMessage: $errorData->message ?? null,
+                        errorCode: $errorData->code ?? null,
+                    ),
+                };
             case 500:
                 // NOTE: I purposely repeated this part of the code because I do not know you API conventions. If you
                 //       have the API convention that all error responses have this exact format, I would have moved
@@ -262,6 +291,29 @@ readonly class CalcClient implements MaximumByIncome\CalcProvider, MaximumByValu
                     responseData: $contents,
                     message: "Unexpected response status code `{$statusCode}`.",
                 );
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------------ //
+    //   Error handling                                                                                             //
+    // ------------------------------------------------------------------------------------------------------------ //
+
+    /**
+     * @throws CalcErrorException
+     * @throws CalcInputException
+     */
+    private function callCalcInputHandler(callable $handler, $input): mixed
+    {
+        try {
+            return $handler($input);
+        } catch (UnexpectedResponseException $e) {
+            throw new CalcErrorException($input, "Unexpected server response", previous: $e);
+        } catch (UnexpectedErrorResponseException $e) {
+            throw new CalcErrorException($input, "Server responded with an unexpected error: ".$e->getErrorMessage(), previous: $e);
+        } catch (ForbiddenResponseException $e) {
+            throw new CalcErrorException($input, "Calculation with API not allowed: ".$e->getErrorMessage(), previous: $e);
+        } catch (InvalidInputErrorResponseException $e) {
+            throw new CalcInputException($input, "Server responded with an invalid input error: ".$e->getErrorMessage(), previous: $e);
         }
     }
 }

@@ -5,7 +5,7 @@ namespace Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByValue;
 use BcMath\Number;
 use Roelhem\NhbTechAssessment\PhpMortgageCalc\Traits\HasImmutableProperties;
 
-readonly class Input
+readonly final class Input
 {
     use HasImmutableProperties;
 

@@ -40,7 +40,7 @@ return [
     |
     */
 
-    'env' => 'development',
+    'env' => 'production',
 
     /*
     |--------------------------------------------------------------------------
@@ -55,6 +55,7 @@ return [
 
     'providers' => [
         App\Providers\AppServiceProvider::class,
+        App\Providers\MortgageCalcServiceProvider::class,
     ],
 
 ];

@@ -1,0 +1,36 @@
+#+title: Nationale Hypotheekbond - Technical Assessment
+
+Dit is de technical assessment die ik gemaakt heb voor mijn sollicitatie bij de Nationale Hypotheekbond.
+
+* Quickstart
+
+** Nix (recommended)
+
+De makkelijkste manier om deze cli-tool uit te proberen is met behulp van [[https://nixos.org/download/#download-nix][Nix]].
+
+** Docker
+
+Als je liever geen Nix gebruikt, kun je het programma ook uitvoeren in een Docker container.
+
+*** Config bestand initïaliseren
+
+Voer het onderstaande commando uit om een nieuw configuratiebestand
+
+#+begin_src shell
+docker run --rm -v .:/data roelhem/nhb-assessment init /data/__maximum-by-income.ini
+#+end_src
+
+*** Maximum hypotheek berekenen
+
+#+begin_src shell
+docker run --rm -v .:/data roelhem/nhb-assessment run /data/__maximum-by-income.ini --api-key=<api-key>
+#+end_src
+
+*** Docker image bouwen.
+
+Om dit project te bouwen is het wel vereist om Nix te installeren. Ook moet je een nix build-machine
+instellen die derivations voor ~x86_64-linux~ kan maken.
+
+#+begin_src shell
+docker image load < "$(nix --extra-experimental-features 'flakes nix-command' build roelhem/nhb-assessment#docker-image --print-out-paths)"
+#+end_src

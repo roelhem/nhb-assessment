@@ -1,6 +1,6 @@
 <?php
 
-namespace Roelhem\NhbTechAssessment\PhpMortgageCalc\Api;
+namespace Roelhem\NhbTechAssessment\PhpMortgageCalc\Api\Auth;
 
 use Psr\Http\Message\RequestInterface;
 

@@ -5,14 +5,16 @@ namespace Roelhem\NhbTechAssessment\PhpMortgageCalc\MaximumByIncome;
 use BcMath\Number;
 use DateTimeInterface;
 use Roelhem\NhbTechAssessment\PhpMortgageCalc\Traits\HasImmutableProperties;
+use function Roelhem\NhbTechAssessment\PhpMortgageCalc\currencyNumberEquals;
+use function Roelhem\NhbTechAssessment\PhpMortgageCalc\dateEquals;
 
-readonly class Person
+readonly final class Person
 {
     use HasImmutableProperties;
 
     /**
-     * @param Number $yearlyIncome The yearly income of this person in Euros.
      * @param DateTimeInterface $dateOfBirth The date of birth of this person.
+     * @param Number $yearlyIncome The yearly income of this person in Euros.
      * @param Number $alimonyPerYear The total amount of alimony (allimentatie) in Euros that this person needs to pay
      *                               in a year.
      * @param Number $totalLoansAmount The total amount of loans (leningen) of this person in Euros.
@@ -21,17 +23,17 @@ readonly class Person
      * @param Number $studentLoanMonthlyAmount The monthly student loan (studie schuld) repayment of this person in
      *                                         Euros.
      * @param DateTimeInterface|null $studentLoanStartDate The start date of the student loan.
-     * @param array<int, Number> $privateLeaseAmounts Collection of all private lease amounts per month in Euros.
+     * @param array<int, Number> $privateLeaseMonthlyAmounts Collection of all private lease amounts per month in Euros.
      */
     public function __construct(
-        public Number $yearlyIncome,
         public DateTimeInterface $dateOfBirth,
+        public Number $yearlyIncome = new Number(0),
         public Number $alimonyPerYear = new Number(0),
         public Number $totalLoansAmount = new Number(0),
         public Number $studentLoanAmount = new Number(0),
         public Number $studentLoanMonthlyAmount = new Number(0),
         public DateTimeInterface|null $studentLoanStartDate = null,
-        public array $privateLeaseAmounts = []
+        public array $privateLeaseMonthlyAmounts = []
     )
     {
         assert($this->yearlyIncome->compare(0) >= 0, 'yearlyIncome is non-negative.');
@@ -44,18 +46,18 @@ readonly class Person
         assert($this->studentLoanAmount->scale <= 2, 'studentLoanAmount has a maximum precision of 2.');
         assert($this->studentLoanMonthlyAmount->compare(0) >= 0, 'studentLoanMonthlyAmount is non-negative.');
         assert($this->studentLoanMonthlyAmount->scale <= 2, 'studentLoanMonthlyAmount has a maximum precision of 2.');
-        assert(array_is_list($this->privateLeaseAmounts), 'privateLeaseAmount is a list.');
+        assert(array_is_list($this->privateLeaseMonthlyAmounts), 'privateLeaseMonthlyAmounts is a list.');
         assert(
-            array_all($this->privateLeaseAmounts, fn($privateLeaseAmount) => $privateLeaseAmount instanceof Number),
-            'Entries of privateLeaseAmounts are numbers.'
+            array_all($this->privateLeaseMonthlyAmounts, fn($privateLeaseAmount) => $privateLeaseAmount instanceof Number),
+            'Entries of privateLeaseMonthlyAmounts are numbers.'
         );
         assert(
-            array_all($this->privateLeaseAmounts, fn($privateLeaseAmount) => $privateLeaseAmount->compare(0) >= 0),
-            'Entries of privateLeaseAmounts are non-negative.'
+            array_all($this->privateLeaseMonthlyAmounts, fn($privateLeaseAmount) => $privateLeaseAmount->compare(0) >= 0),
+            'Entries of privateLeaseMonthlyAmounts are non-negative.'
         );
         assert(
-            array_all($this->privateLeaseAmounts, fn($privateLeaseAmount) => $privateLeaseAmount->scale <= 2),
-            'Entries of privateLeaseAmounts have a maximum precision of 2.'
+            array_all($this->privateLeaseMonthlyAmounts, fn($privateLeaseAmount) => $privateLeaseAmount->scale <= 2),
+            'Entries of privateLeaseMonthlyAmounts have a maximum precision of 2.'
         );
     }
 
@@ -119,5 +121,43 @@ readonly class Person
             ->mul($holidayAllowance, scale: 2);
 
         return $this->with(yearlyIncome: $yearlyIncome);
+    }
+
+    /**
+     * Checks whether this person is equivalent to the $other person.
+     *
+     * @param mixed $other
+     * @return bool
+     */
+    public function equals(mixed $other): bool
+    {
+        // Ensure the other type also is a person.
+        if(!($other instanceof self)) return false;
+
+
+        // Compare private lease amounts.
+        $thisPrivateLeaseAmounts = $this->privateLeaseMonthlyAmounts;
+        $otherPrivateLeaseAmounts = $other->privateLeaseMonthlyAmounts;
+        if(count($thisPrivateLeaseAmounts) !== count($otherPrivateLeaseAmounts)) {
+            return false;
+        }
+
+        usort($thisPrivateLeaseAmounts, fn(Number $a, Number $b) => $a->compare($b));
+        usort($otherPrivateLeaseAmounts, fn(Number $a, Number $b) => $a->compare($b));
+        for ($i=0; $i<count($thisPrivateLeaseAmounts); $i++) {
+            if(!currencyNumberEquals($thisPrivateLeaseAmounts[$i], $otherPrivateLeaseAmounts[$i])) {
+                return false;
+            }
+        }
+
+
+        // Compare other values.
+        return currencyNumberEquals($this->yearlyIncome, $other->yearlyIncome)
+            && dateEquals($this->dateOfBirth, $other->dateOfBirth)
+            && currencyNumberEquals($this->alimonyPerYear, $other->alimonyPerYear)
+            && currencyNumberEquals($this->totalLoansAmount, $other->totalLoansAmount)
+            && currencyNumberEquals($this->studentLoanAmount, $other->studentLoanAmount)
+            && currencyNumberEquals($this->studentLoanMonthlyAmount, $other->studentLoanMonthlyAmount)
+            && dateEquals($other->studentLoanStartDate, $other->studentLoanStartDate);
     }
 }
