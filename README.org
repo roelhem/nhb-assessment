@@ -1,24 +1,43 @@
 #+title: Nationale Hypotheekbond - Technical Assessment
 
-Dit is de technical assessment die ik gemaakt heb voor mijn sollicitatie bij de Nationale Hypotheekbond.
+Dit is de technical assessment die ik (Roel Hemerik) gemaakt heb voor mijn sollicitatie bij de Nationale Hypotheekbond.
 
 * Quickstart
 
+Dit project is zo ontworpen dat het niet nodig is om een lokale clone van deze repository te maken.
+
 ** Nix (recommended)
 
-De makkelijkste manier om deze cli-tool uit te proberen is met behulp van [[https://nixos.org/download/#download-nix][Nix]].
+De makkelijkste manier om deze cli-tool te installeren is met behulp van de [[https://nixos.org/download/#download-nix][Nix]] package manager.
+Deze tool zorgt ervoor dat je precies de juiste php versie gebruikt wordt zonder dat het je systeem
+aanpast.
+
+Voer het onderstaande commando uit om een tijdelijk shell te krijgen waarin je deze CLI kunt uitproberen.
+
+#+begin_src shell
+nix --extra-experimental-features 'flakes nix-command' shell roelhem/nhb-assessment
+#+end_src
 
 ** Docker
 
 Als je liever geen Nix gebruikt, kun je het programma ook uitvoeren in een Docker container.
+Een volledig gebouwde docker image staat klaar op DockerHub onder de naam [[https://hub.docker.com/r/roelhem/nhb-assessment][roelhem/nhb-assessment]].
 
-*** Config bestand initïaliseren
+#+begin_quote
+LET OP! De docker container is bedoeld als minimale demonstratie voor situaties waarin het niet
+mogelijk is om nix te installeren. Het is een stuk lastiger om je favoriete tekst-editor te
+integreren met de docker versie.
+#+end_quote
 
-Voer het onderstaande commando uit om een nieuw configuratiebestand
+*** Config bestand initialiseren
+
+Voer het onderstaande commando uit om een nieuw configuratiebestand.
 
 #+begin_src shell
 docker run --rm -v .:/data roelhem/nhb-assessment init /data/__maximum-by-income.ini
 #+end_src
+
+Je kunt nu het gegenereerde bestand ~__maximum-by-income.ini~ aanpassen om
 
 *** Maximum hypotheek berekenen
 
@@ -28,9 +47,11 @@ docker run --rm -v .:/data roelhem/nhb-assessment run /data/__maximum-by-income.
 
 *** Docker image bouwen.
 
-Om dit project te bouwen is het wel vereist om Nix te installeren. Ook moet je een nix build-machine
-instellen die derivations voor ~x86_64-linux~ kan maken.
+Je kunt de docker container op je eigen machine bouwen met behulp van het onderstaande commando.
 
 #+begin_src shell
-docker image load < "$(nix --extra-experimental-features 'flakes nix-command' build roelhem/nhb-assessment#docker-image --print-out-paths)"
+docker image load < "$(nix build roelhem/nhb-assessment#docker-image --print-out-paths)"
 #+end_src
+
+Om dit project te bouwen is het wel vereist om Nix te installeren. Ook moet je een nix build-machine
+instellen die derivations voor ~x86_64-linux~ kan maken.

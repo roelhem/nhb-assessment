@@ -35,6 +35,7 @@
             git
             watchexec
             dockerTools
+            buildEnv
             ;
 
           curlCerts = pkgs.fetchurl {
@@ -70,7 +71,7 @@
             '';
           };
 
-          phpDev = php.override {
+          phpProd = php.override {
             cgiSupport = false;
             fpmSupport = false;
             phpdbgSupport = false;
@@ -79,25 +80,38 @@
             valgrindSupport = false;
           };
 
-          nhb-assessment = phpDev.buildComposerProject (final: {
+          nhb-assessment = {
             pname = "nhb-assessment";
             version = "0.1.0";
             src = ./.;
             vendorHash = "sha256-+vx0QcGo+9X75v8WfJTU4c/9FRUufbcl0oxSm7KOnWs=";
-          });
+          };
         in
         {
 
           packages = {
-            inherit nhb-assessment;
 
+            default = buildEnv {
+              name = "nhb-assessment";
+              paths = [ self'.packages.full ];
+              pathsToLink = [ "/bin" ];
+            };
+
+            # Package die gebruikt maakt van een php derivation met zo min mogelijk
+            # dependencies. Voornamlijk bedoeld voor gebruik in de docker image.
+            minimal = phpProd.buildComposerProject (final: nhb-assessment);
+
+            # Package die gebruikt de standaard php derivation uit nixpkgs.
+            full = php.buildComposerProject (final: nhb-assessment);
+
+            # De docker image.
             docker-image = dockerTools.buildImage {
               name = "roelhem/nhb-assessment";
               tag = "latest";
 
               config = {
                 Entrypoint = [
-                  "${self.packages."x86_64-linux".nhb-assessment}/bin/nhb-assessment"
+                  "${self.packages."x86_64-linux".minimal}/bin/nhb-assessment"
                 ];
                 Cmd = [
                   "init"
